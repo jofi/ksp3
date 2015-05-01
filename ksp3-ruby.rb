@@ -1,13 +1,3 @@
-vstup = ARGV[0]
-vystup = ARGV[1]
-
-chodba = []
-vysledky = []
-
-prvy_riadok = true
-cislo_riadku = 0
-cislo_stlpca = 0
-
 class Dlazdica
   attr_reader :riadok, :stlpec, :hodnota
 
@@ -19,34 +9,42 @@ class Dlazdica
   end
 
   def dlazdica_nad
-    @chodba.dlazdica(@riadok - 1, @stlpec)
+    @dlazdica_nad ||= @chodba.dlazdica(@riadok - 1, @stlpec)
+    @dlazdica_nad
   end
 
   def dlazdica_vlavo
-    @chodba.dlazdica(@riadok, @stlpec - 1)
+    @dlazdica_vlavo ||= @chodba.dlazdica(@riadok, @stlpec - 1)
+    @dlazdica_vlavo
   end
 
   def suma
-    if (@riadok == 0) || (@stlpec == 0)
-      return 0
+    if !lepsi_sused
+      @suma ||= @hodnota
+    else
+      @suma ||= lepsi_sused.suma + @hodnota
     end
-    @suma = lepsi_sused.suma + @hodnota
     @suma
   end
 
   def smer
-    if (@riadok == 0) || (@stlpec == 0)
-      return ''
+    if (@riadok == 1) && (@stlpec == 1)
+      @smer ||= '-'
     end
-    @smer ||= dlazdica_vlavo.hodnota > dlazdica_nad.hodnota ? 'R' : 'D'
+    @smer ||= begin
+      vlavo = dlazdica_vlavo ? dlazdica_vlavo.hodnota : 0
+      nad = dlazdica_nad ? dlazdica_nad.hodnota : 0
+      vlavo > nad ? 'R' : 'D'
+    end
     @smer
   end
 
   def lepsi_sused
-    if (@riadok == 0) || (@stlpec == 0)
-      return nil
+    @lepsi_sused ||= begin
+      vlavo = dlazdica_vlavo ? dlazdica_vlavo.hodnota : 0
+      nad = dlazdica_nad ? dlazdica_nad.hodnota : 0
+      vlavo > nad ? dlazdica_vlavo : dlazdica_nad
     end
-    @lepsi_sused ||= dlazdica_vlavo.hodnota > dlazdica_nad.hodnota ? dlazdica_vlavo : dlazdica_nad
     @lepsi_sused
   end
 
@@ -77,9 +75,20 @@ class Chodba
 
   def dlazdica(riadok, stlpec)
     if (riadok == 0) || (stlpec == 0)
-      return Chodba.prazdna_dlazdica(self)
+      return nil #Chodba.prazdna_dlazdica(self)
     end
     @dlazdice[riadok - 1][stlpec - 1]
+  end
+
+  def cesta
+    cesta_odzadu = []
+    dlazdica = dlazdica(@riadkov, @stlpcov)
+    while dlazdica
+      cesta_odzadu << dlazdica.smer
+      dlazdica = dlazdica.lepsi_sused
+    end
+
+    cesta_odzadu.reverse
   end
 
   def vypis_dlazdice(&block)
@@ -109,20 +118,15 @@ class Chodba
     end
   end
 
-  def cesta
-    cesta_odzadu = []
-    dlazdica = dlazdica(@riadkov, @stlpcov)
-    while dlazdica
-      cesta_odzadu << dlazdica.smer
-      dlazdica = dlazdica.lepsi_sused
-    end
-
-    cesta_odzadu.reverse
+  def vypis_cestu
+    puts cesta.join(' ')
   end
 end
 
 
+vstup = ARGV[0]
 @chodba = nil
+prvy_riadok = 0
 
 File.open(vstup, 'r').each do |akt_riadok|
   if prvy_riadok
@@ -140,4 +144,4 @@ puts
 puts
 @chodba.vypis_smery
 puts
-puts @chodba.cesta
+@chodba.vypis_cestu
