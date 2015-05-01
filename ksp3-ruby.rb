@@ -1,3 +1,4 @@
+#!/usr/bin/env ruby
 class Dlazdica
   attr_reader :riadok, :stlpec, :hodnota
 
@@ -19,10 +20,11 @@ class Dlazdica
   end
 
   def suma
-    if !lepsi_sused
-      @suma ||= @hodnota
+    return @suma if @suma
+    if lepsi_sused.nil?
+      @suma = @hodnota
     else
-      @suma ||= lepsi_sused.suma + @hodnota
+      @suma = lepsi_sused.suma + @hodnota
     end
     @suma
   end
@@ -32,22 +34,28 @@ class Dlazdica
       @smer ||= '-'
     end
     @smer ||= begin
-      vlavo = dlazdica_vlavo ? dlazdica_vlavo.hodnota : 0
-      nad = dlazdica_nad ? dlazdica_nad.hodnota : 0
-      vlavo > nad ? 'R' : 'D'
+      vlavo = dlazdica_vlavo ? dlazdica_vlavo.suma : 0
+      nad = dlazdica_nad ? dlazdica_nad.suma : 0
+      sm = vlavo > nad ? 'R' : 'D'
+      sm
     end
     @smer
   end
 
   def lepsi_sused
+    return @lepsi_sused if @lepsi_sused
     @lepsi_sused ||= begin
-      vlavo = dlazdica_vlavo ? dlazdica_vlavo.hodnota : 0
-      nad = dlazdica_nad ? dlazdica_nad.hodnota : 0
-      vlavo > nad ? dlazdica_vlavo : dlazdica_nad
+      vlavo = dlazdica_vlavo ? dlazdica_vlavo.suma : 0
+      nad = dlazdica_nad ? dlazdica_nad.suma : 0
+      lepsi = vlavo > nad ? dlazdica_vlavo : dlazdica_nad
+      lepsi
     end
     @lepsi_sused
   end
 
+  def to_s
+    "[#{riadok}, #{stlpec}]=#{hodnota}"
+  end
 end
 
 class Chodba
@@ -55,6 +63,22 @@ class Chodba
   def self.prazdna_dlazdica(chodba)
     @@prazdna ||= Dlazdica.new(chodba, 0,0,0)
     @@prazdna
+  end
+
+  def self.zo_suboru(subor)
+    prvy_riadok = true
+    chodba = nil
+    File.open(subor, 'r').each do |akt_riadok|
+      if prvy_riadok
+        riadkov, stlpcov = akt_riadok.split(' ')
+        chodba = Chodba.new(riadkov.to_i, stlpcov.to_i)
+        prvy_riadok = false
+        next
+      end
+      chodba.pridaj_riadok(akt_riadok.split(' '))
+    end
+    chodba.zrataj!
+    chodba
   end
 
   def initialize(riadkov, stlpcov)
@@ -73,11 +97,29 @@ class Chodba
     end
   end
 
+  def zrataj!
+    (1..@riadkov).each do |r|
+      (1..@stlpcov).each do |s|
+        #puts "[#{r},#{s}]"
+        dlazdica(r,s).suma
+      end
+    end
+    # @dlazdice.each do |row|
+      # row.each do |col|
+        # col.suma
+      # end
+    # end
+  end
+
   def dlazdica(riadok, stlpec)
     if (riadok == 0) || (stlpec == 0)
       return nil #Chodba.prazdna_dlazdica(self)
     end
     @dlazdice[riadok - 1][stlpec - 1]
+  end
+
+  def suma
+    dlazdica(@riadkov, @stlpcov).suma
   end
 
   def cesta
@@ -102,46 +144,36 @@ class Chodba
 
   def vypis_hodnoty
     vypis_dlazdice do |dlazdica|
-        printf("%3d", dlazdica.hodnota)
+        printf("%4d", dlazdica.hodnota)
     end
   end
 
   def vypis_sumy
     vypis_dlazdice do |dlazdica|
-        printf("%3d", dlazdica.suma)
+        printf("%4d", dlazdica.suma)
     end
   end
 
   def vypis_smery
     vypis_dlazdice do |dlazdica|
-        printf("%3s", dlazdica.smer)
+        printf("%4s", dlazdica.smer)
     end
   end
 
   def vypis_cestu
-    puts cesta.join(' ')
+    puts cesta.join('')
   end
 end
 
-
-vstup = ARGV[0]
-@chodba = nil
-prvy_riadok = 0
-
-File.open(vstup, 'r').each do |akt_riadok|
-  if prvy_riadok
-    riadkov, stlpcov = akt_riadok.split(' ')
-    @chodba = Chodba.new(riadkov.to_i, stlpcov.to_i)
-    prvy_riadok = false
-    next
-  end
-  @chodba.pridaj_riadok(akt_riadok.split(' '))
+if __FILE__ == $0
+  vstup = ARGV[0]
+  @chodba = Chodba.zo_suboru(vstup)
+  #@chodba.vypis_hodnoty
+  #puts
+  #@chodba.vypis_sumy
+  #puts
+  #@chodba.vypis_smery
+  #puts
+  puts @chodba.suma
+  puts @chodba.cesta
 end
-
-@chodba.vypis_hodnoty
-puts
-@chodba.vypis_sumy
-puts
-@chodba.vypis_smery
-puts
-@chodba.vypis_cestu
